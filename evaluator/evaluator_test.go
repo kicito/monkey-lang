@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kicito/monkey/lexer"
@@ -396,6 +397,64 @@ func TestArrayIndexExpressions(t *testing.T) {
 			testIntegerObject(t, evaluated, int64(integer))
 		} else {
 			testNullObject(t, evaluated)
+		}
+	}
+}
+
+func TestImportStatement(t *testing.T) {
+	tests := []struct {
+		input       string
+		expectError bool
+		expected    interface{}
+	}{
+		{
+			`
+			import double from "/home/narongrit/sdu/master/interpreter/go-interpreter/evaluator/A.mon"
+			double(2);
+			`,
+			false,
+			4,
+		},
+		{
+			`
+			import A from "/home/narongrit/sdu/master/interpreter/go-interpreter/evaluator/A.mon"
+			`,
+			true,
+			"unknown identifier A in /home/narongrit/sdu/master/interpreter/go-interpreter/evaluator/A.mon",
+		},
+		{
+			`
+			import A from "somefile.mon"
+			`,
+			true,
+			"unable to open module somefile.mon",
+		},
+		{
+			`
+			import * as A from "/home/narongrit/sdu/master/interpreter/go-interpreter/evaluator/A.mon"
+			A["double"](2);
+			`,
+			false,
+			4,
+		},
+	}
+	for _, tt := range tests {
+		// evaluated := testEval(tt.input)
+		evaluated := testEval(tt.input)
+		if tt.expectError {
+			errObj, ok := evaluated.(*object.Error)
+			if !ok {
+				t.Errorf("no error object returned. got=%T(%+v)",
+					evaluated, evaluated)
+				continue
+			}
+			if !strings.HasPrefix(errObj.Message, tt.expected.(string)) {
+				t.Errorf("wrong error message. expected=%q, got=%q",
+					tt.expected, errObj.Message)
+			}
+		} else {
+			integer := tt.expected.(int)
+			testIntegerObject(t, evaluated, int64(integer))
 		}
 	}
 }

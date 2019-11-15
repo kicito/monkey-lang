@@ -334,3 +334,25 @@ func (hl *HashLiteral) String() string {
 	out.WriteString("}")
 	return out.String()
 }
+
+type ImportStatement struct {
+	Token             token.Token // the token.IMPORT token
+	IsNameSpaceImport bool
+	LocalName         *Identifier // the local variable LocalName
+	Target            *StringLiteral
+}
+
+func (is *ImportStatement) statementNode()       {}
+func (is *ImportStatement) TokenLiteral() string { return is.Token.Literal }
+func (is *ImportStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("import ")
+	if is.IsNameSpaceImport {
+		out.WriteString("* as " + is.LocalName.String())
+	} else {
+		out.WriteString(is.LocalName.String())
+	}
+	out.WriteString(" from ")
+	out.WriteString(is.Target.String())
+	return out.String()
+}

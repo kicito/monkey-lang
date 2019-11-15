@@ -135,6 +135,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLetStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
+	case token.IMPORT:
+		return p.parseImportStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -174,6 +176,35 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return stmt
 }
 
+func (p *Parser) parseImportStatement() *ast.ImportStatement {
+	stmt := &ast.ImportStatement{Token: p.curToken}
+	p.nextToken()
+	if p.curTokenIs(token.ASTERISK) {
+		// namespace import
+		stmt.IsNameSpaceImport = true
+		if !p.expectPeek(token.AS) {
+			return nil
+		}
+		p.nextToken()
+		exp := p.parseIdentifier()
+		stmt.LocalName = exp.(*ast.Identifier)
+	} else {
+		exp := p.parseIdentifier()
+		stmt.LocalName = exp.(*ast.Identifier)
+	}
+	if !p.expectPeek(token.FROM) {
+		return nil
+	}
+	p.nextToken()
+	expString := p.parseStringLiteral()
+	stmt.Target = expString.(*ast.StringLiteral)
+
+	// for !p.curTokenIs(token.SEMICOLON) {
+	// 	p.nextToken()
+	// }
+	return stmt
+}
+
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	// defer untrace(trace("parseExpressionStatement"))
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
@@ -209,7 +240,6 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
-
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 

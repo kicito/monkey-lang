@@ -2,9 +2,14 @@ package evaluator
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	"github.com/kicito/monkey/ast"
+	"github.com/kicito/monkey/lexer"
 	"github.com/kicito/monkey/object"
+	"github.com/kicito/monkey/parser"
 )
 
 var (
@@ -34,6 +39,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return val
 		}
 		env.Set(node.Name.Value, val)
+	case *ast.ImportStatement:
+		return evalImportStatement(node, env)
 	case *ast.Identifier:
 		return evalIdentifier(node, env)
 
@@ -139,6 +146,47 @@ func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) obje
 		}
 	}
 	return result
+}
+
+func evalImportStatement(node *ast.ImportStatement, env *object.Environment) object.Object {
+	var result object.Object
+	var targetPath string
+	// check whether path is abs
+	if filepath.IsAbs(node.Target.Value) {
+		targetPath = node.Target.Value
+	} else {
+		// finding Target directory
+		ex, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		targetPath = filepath.Join(filepath.Dir(ex), node.Target.Value)
+	}
+	readByte, err := ioutil.ReadFile(targetPath)
+	if err != nil {
+		return newError("unable to open module %s on %s", node.Target.Value, targetPath)
+	}
+
+	// create new program
+	l := lexer.New(string(readByte))
+	p := parser.New(l)
+	program := p.ParseProgram()
+	libEnv := object.NewEnvironment()
+	obj := Eval(program, libEnv)
+	if isError(obj) {
+		return result
+	}
+
+	if node.IsNameSpaceImport {
+		env.Set(node.LocalName.Value, libEnv.ToHash())
+	} else {
+		locObj, ok := libEnv.Get(node.LocalName.Value)
+		if !ok {
+			return newError("unknown identifier %s in %s", node.LocalName, node.Target.Value)
+		}
+		env.Set(node.LocalName.Value, locObj)
+	}
+	return TRUE
 }
 
 func evalPrefixExpression(operator string, right object.Object) object.Object {

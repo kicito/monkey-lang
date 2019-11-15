@@ -790,6 +790,77 @@ func TestParsingHashLiteralsWithExpressions(t *testing.T) {
 	}
 }
 
+func TestImportStatement(t *testing.T) {
+
+	tests := []struct {
+		input                     string
+		expectedIdentifier        string
+		expectedIsNameSpaceImport bool
+		expectedTarget            string
+	}{
+		{`import A from "a.mon"`, "A", false, "a.mon"},
+		{`import TestA from "./B.mon"`, "TestA", false, "./B.mon"},
+		{`import * as A from "./A.mon"`, "A", true, "./A.mon"},
+	}
+	for _, tt := range tests {
+		l := lexer.New(tt.input)
+		p := New(l)
+		program := p.ParseProgram()
+		checkParserErrors(t, p)
+		if len(program.Statements) != 1 {
+			t.Fatalf("program.Statements does not contain 1 statements. got=%d", len(program.Statements))
+		}
+		stmt := program.Statements[0]
+		if !testImportStatement(t, stmt, tt.expectedIdentifier, tt.expectedIsNameSpaceImport, tt.expectedTarget) {
+			return
+		}
+	}
+}
+
+func testImportStatement(t *testing.T, s ast.Statement, name string, isNameSpaceImport bool, target string) bool {
+	if s.TokenLiteral() != "import" {
+		t.Errorf("s.TokenLiteral is not 'import'. got=%q", s.TokenLiteral())
+		return false
+	}
+
+	importStmt, ok := s.(*ast.ImportStatement)
+	if !ok {
+		t.Errorf("s is not *ast.ImportStatement. got %T", s)
+		return false
+	}
+
+	if importStmt.LocalName.Value != name {
+		t.Errorf("importStmt.Name.Value is not '%s'. got=%s", name, importStmt.LocalName.Value)
+		return false
+	}
+
+	if importStmt.IsNameSpaceImport != isNameSpaceImport {
+		t.Errorf("importStmt.Name.IsNameSpaceImport is not %t. got=%t", isNameSpaceImport, importStmt.IsNameSpaceImport)
+		return false
+	}
+
+	if importStmt.Target.Value != target {
+		t.Errorf("s.Name not '%s'. got=%s", name, importStmt.Target.Value)
+		return false
+	}
+
+	// input := `"hello world";`
+	// l := lexer.New(input)
+	// p := New(l)
+	// program := p.ParseProgram()
+	// checkParserErrors(t, p)
+	// stmt := program.Statements[0].(*ast.ExpressionStatement)
+	// literal, ok := stmt.Expression.(*ast.StringLiteral)
+	// if !ok {
+	// 	t.Fatalf("exp not *ast.StringLiteral. got=%T", stmt.Expression)
+	// }
+	// if literal.Value != "hello world" {
+	// 	t.Errorf("literal.Value not %q. got=%q", "hello world", literal.Value)
+	// }
+
+	return true
+}
+
 func testIdentifier(t *testing.T, exp ast.Expression, value string) bool {
 	ident, ok := exp.(*ast.Identifier)
 	if !ok {

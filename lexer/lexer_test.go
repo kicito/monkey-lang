@@ -29,6 +29,7 @@ func TestNextToken(t *testing.T) {
 	"foo bar"
 	[1, 2];
 	{"foo":"bar"}
+	import A from "./a.mon";
 	`
 
 	tests := []struct {
@@ -126,6 +127,11 @@ func TestNextToken(t *testing.T) {
 		{token.COLON, ":"},
 		{token.STRING, "bar"},
 		{token.RBRACE, "}"},
+		{token.IMPORT, "import"},
+		{token.IDENT, "A"},
+		{token.FROM, "from"},
+		{token.STRING, "./a.mon"},
+		{token.SEMICOLON, ";"},
 		{token.EOF, ""},
 	}
 
